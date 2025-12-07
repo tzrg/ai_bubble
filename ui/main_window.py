@@ -54,15 +54,18 @@ class MainWindow(QMainWindow):
         self.droplet_view = DropletVisualization()
         left_layout.addWidget(self.droplet_view)
         
-        left_panel.setMaximumWidth(400)
+        left_panel.setMaximumWidth(350)
         splitter.addWidget(left_panel)
         
         # Right panel: Plots
         self.plots = SimulationPlots()
         splitter.addWidget(self.plots)
         
+        # Connect droplet time changes to plot time markers
+        self.droplet_view.timeChanged.connect(self.plots.set_time_marker)
+        
         # Set splitter sizes
-        splitter.setSizes([350, 850])
+        splitter.setSizes([320, 880])
         
         main_layout.addWidget(splitter)
         
@@ -157,20 +160,22 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Physics Model",
+            "<h3>Flash Boiling Physics</h3>"
+            "<p><b>Superheat:</b> ΔT = T_droplet - T_sat(p_ambient)</p>"
+            "<p>When ΔT > threshold, nucleate boiling occurs inside the droplet, "
+            "causing rapid volumetric evaporation.</p>"
+            "<p>At very high superheat (ΔT > fragmentation threshold), the droplet "
+            "explosively fragments into smaller droplets.</p>"
             "<h3>Governing Equations</h3>"
-            "<p><b>Mass Balance:</b><br>"
-            "dR/dt = -ṁ / (4πR²ρ)</p>"
+            "<p><b>Surface Evaporation (Hertz-Knudsen):</b><br>"
+            "ṁ_surface = 4πR²·α·(psat - p∞) / √(2π·Rs·T)</p>"
+            "<p><b>Nucleate Boiling:</b><br>"
+            "ṁ_nucleate ∝ mass · (ΔT - ΔT_threshold)²</p>"
             "<p><b>Energy Balance:</b><br>"
-            "m·cₚ·dT/dt = -ṁ·hfg + Q̇conv</p>"
-            "<p><b>Hertz-Knudsen Evaporation:</b><br>"
-            "ṁ = 4πR²·α·(psat - p∞) / √(2π·Rs·T)</p>"
-            "<p><b>Antoine Equation (Saturation Pressure):</b><br>"
-            "log₁₀(psat) = A - B/(C + T)</p>"
-            "<h3>Parameters</h3>"
+            "m·cₚ·dT/dt = -ṁ·hfg</p>"
+            "<h3>Key Parameters</h3>"
             "<ul>"
-            "<li><b>R₀</b>: Initial droplet radius</li>"
-            "<li><b>T₀</b>: Initial droplet temperature</li>"
-            "<li><b>p∞</b>: Ambient pressure</li>"
-            "<li><b>α</b>: Evaporation coefficient (0.01-1.0)</li>"
+            "<li><b>Nucleation Factor</b>: Multiplier for internal boiling rate</li>"
+            "<li><b>Fragmentation ΔT</b>: Superheat threshold for explosive breakup</li>"
             "</ul>"
         )

@@ -2,7 +2,8 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel,
-    QDoubleSpinBox, QSlider, QPushButton, QCheckBox, QFormLayout
+    QDoubleSpinBox, QSlider, QPushButton, QCheckBox, QFormLayout,
+    QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -33,16 +34,16 @@ class LabeledSlider(QWidget):
         self.log_scale = log_scale
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 2, 0, 2)
-        layout.setSpacing(2)
+        layout.setContentsMargins(0, 1, 0, 1)
+        layout.setSpacing(0)
         
         # Header with label and value on same line
         header = QHBoxLayout()
-        header.setSpacing(5)
+        header.setSpacing(3)
         self.label = QLabel(label)
-        self.label.setStyleSheet("font-size: 11px;")
+        self.label.setStyleSheet("font-size: 10px;")
         self.value_label = QLabel()
-        self.value_label.setStyleSheet("font-size: 11px; font-weight: bold; min-width: 70px;")
+        self.value_label.setStyleSheet("font-size: 10px; font-weight: bold; min-width: 60px;")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         header.addWidget(self.label)
         header.addStretch()
@@ -53,7 +54,7 @@ class LabeledSlider(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
-        self.slider.setMaximumHeight(20)
+        self.slider.setFixedHeight(16)
         self.slider.valueChanged.connect(self._on_slider_changed)
         layout.addWidget(self.slider)
         
@@ -61,7 +62,7 @@ class LabeledSlider(QWidget):
         self.set_value(default)
         
         # Set fixed height for compactness
-        self.setMaximumHeight(50)
+        self.setFixedHeight(36)
     
     def _slider_to_value(self, slider_val: int) -> float:
         """Convert slider position to actual value."""
@@ -126,22 +127,36 @@ class ParameterControlPanel(QWidget):
     
     def _setup_ui(self):
         """Set up the control panel UI."""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Scroll area for controls
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        
+        # Container widget for scroll area
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(3)
         
         # Compact group box style
         group_style = """
             QGroupBox {
                 font-weight: bold;
-                font-size: 11px;
-                padding-top: 12px;
-                margin-top: 5px;
+                font-size: 10px;
+                padding-top: 10px;
+                margin-top: 3px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 5px;
-                padding: 0 3px;
+                padding: 0 2px;
             }
         """
         
@@ -149,8 +164,8 @@ class ParameterControlPanel(QWidget):
         initial_group = QGroupBox("Initial Conditions")
         initial_group.setStyleSheet(group_style)
         initial_layout = QVBoxLayout(initial_group)
-        initial_layout.setContentsMargins(5, 5, 5, 5)
-        initial_layout.setSpacing(3)
+        initial_layout.setContentsMargins(3, 3, 3, 3)
+        initial_layout.setSpacing(2)
         
         self.radius_slider = LabeledSlider(
             "Radius R₀",
@@ -174,8 +189,8 @@ class ParameterControlPanel(QWidget):
         ambient_group = QGroupBox("Ambient Conditions")
         ambient_group.setStyleSheet(group_style)
         ambient_layout = QVBoxLayout(ambient_group)
-        ambient_layout.setContentsMargins(5, 5, 5, 5)
-        ambient_layout.setSpacing(3)
+        ambient_layout.setContentsMargins(3, 3, 3, 3)
+        ambient_layout.setSpacing(2)
         
         self.pressure_slider = LabeledSlider(
             "Pressure p∞",
@@ -188,11 +203,11 @@ class ParameterControlPanel(QWidget):
         layout.addWidget(ambient_group)
         
         # Model Parameters Group
-        model_group = QGroupBox("Flash Boiling Parameters")
+        model_group = QGroupBox("Flash Boiling")
         model_group.setStyleSheet(group_style)
         model_layout = QVBoxLayout(model_group)
-        model_layout.setContentsMargins(5, 5, 5, 5)
-        model_layout.setSpacing(3)
+        model_layout.setContentsMargins(3, 3, 3, 3)
+        model_layout.setSpacing(2)
         
         self.alpha_slider = LabeledSlider(
             "Evap. Coeff. α",
@@ -220,14 +235,15 @@ class ParameterControlPanel(QWidget):
         
         # Checkboxes in horizontal layout
         check_layout = QHBoxLayout()
-        self.nucleate_check = QCheckBox("Nucleate Boiling")
+        check_layout.setSpacing(5)
+        self.nucleate_check = QCheckBox("Nucleate")
         self.nucleate_check.setChecked(True)
-        self.nucleate_check.setStyleSheet("font-size: 10px;")
+        self.nucleate_check.setStyleSheet("font-size: 9px;")
         self.nucleate_check.stateChanged.connect(self._on_parameter_changed)
         check_layout.addWidget(self.nucleate_check)
         
         self.convection_check = QCheckBox("Convection")
-        self.convection_check.setStyleSheet("font-size: 10px;")
+        self.convection_check.setStyleSheet("font-size: 9px;")
         self.convection_check.stateChanged.connect(self._on_parameter_changed)
         check_layout.addWidget(self.convection_check)
         model_layout.addLayout(check_layout)
@@ -238,8 +254,8 @@ class ParameterControlPanel(QWidget):
         sim_group = QGroupBox("Simulation")
         sim_group.setStyleSheet(group_style)
         sim_layout = QVBoxLayout(sim_group)
-        sim_layout.setContentsMargins(5, 5, 5, 5)
-        sim_layout.setSpacing(3)
+        sim_layout.setContentsMargins(3, 3, 3, 3)
+        sim_layout.setSpacing(2)
         
         self.time_slider = LabeledSlider(
             "Max Time",
@@ -251,16 +267,16 @@ class ParameterControlPanel(QWidget):
         
         layout.addWidget(sim_group)
         
-        # Run Button - more compact
-        self.run_button = QPushButton("▶ Run Simulation")
-        self.run_button.setMinimumHeight(32)
+        # Run Button - compact
+        self.run_button = QPushButton("▶ Run")
+        self.run_button.setFixedHeight(28)
         self.run_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
                 font-weight: bold;
-                font-size: 12px;
-                border-radius: 4px;
+                font-size: 11px;
+                border-radius: 3px;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -275,10 +291,12 @@ class ParameterControlPanel(QWidget):
         # Auto-run checkbox
         self.auto_run_check = QCheckBox("Auto-run on change")
         self.auto_run_check.setChecked(True)
-        self.auto_run_check.setStyleSheet("font-size: 10px;")
+        self.auto_run_check.setStyleSheet("font-size: 9px;")
         layout.addWidget(self.auto_run_check)
         
-        layout.addStretch()
+        # Set scroll area content
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
     
     def _on_parameter_changed(self):
         """Handle parameter change."""

@@ -1,13 +1,15 @@
 # Flash Evaporation Droplet Simulation
 
-A physically accurate simulation and visualization of flash evaporation of a liquid droplet.
+A physically accurate simulation and visualization of **flash boiling** (explosive evaporation) of a liquid droplet in low-pressure environments.
 
 ## Features
 
-- Real-time simulation of droplet evaporation using Hertz-Knudsen equation
-- Interactive parameter controls (radius, temperature, pressure, evaporation coefficient)
-- Live plots of droplet radius and temperature vs time
-- Animated droplet visualization
+- **True flash boiling physics**: Surface evaporation + internal nucleate boiling
+- **Explosive fragmentation**: Droplet shatters at high superheat
+- **Real-time visualization**: Animated droplet with temperature-based coloring
+- **Interactive controls**: Adjust all physical parameters with immediate feedback
+- **Live plots**: Radius, temperature, superheat, evaporation rate, and pressure vs time
+- **Playback with time markers**: Scrub through simulation with synchronized plot indicators
 
 ## Installation
 
@@ -97,20 +99,65 @@ python main.py
 
 ## Physical Model
 
-The simulation solves coupled ODEs for:
-- **Mass balance**: dR/dt based on evaporation mass flux
-- **Energy balance**: dT/dt based on latent heat removal
+### What is Flash Boiling?
 
-Key equations:
-- Hertz-Knudsen evaporation rate
-- Antoine equation for saturation pressure
-- Clausius-Clapeyron relation for latent heat variation
+Flash boiling occurs when a liquid is suddenly exposed to a pressure below its saturation pressure. The liquid becomes **superheated** (T > T_sat at ambient pressure), causing:
+
+1. **Surface evaporation** - molecules escape from the droplet surface
+2. **Nucleate boiling** - bubbles form inside the droplet when superheat exceeds a threshold
+3. **Fragmentation** - at very high superheat, rapid bubble growth shatters the droplet
+
+### Governing Equations
+
+**Superheat Degree:**
+```
+ΔT = T_droplet - T_sat(p_ambient)
+```
+
+**Surface Evaporation (Hertz-Knudsen):**
+```
+ṁ_surface = 4πR² · α · (p_sat - p_ambient) / √(2π·R_s·T)
+```
+
+**Nucleate Boiling** (when ΔT > threshold):
+```
+ṁ_nucleate ∝ mass · nucleation_factor · (ΔT - ΔT_threshold)²
+```
+
+**Energy Balance:**
+```
+m · cₚ · dT/dt = -ṁ_total · h_fg
+```
+
+**Fragmentation Criterion:**
+```
+If ΔT > ΔT_fragmentation → explosive breakup
+```
+
+### Thermodynamic Properties
+
+- **Saturation pressure**: Antoine equation
+- **Latent heat**: Watson correlation (temperature-dependent)
+- **Density**: Temperature-dependent correlation
 
 ## Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| R₀ | Initial droplet radius | 1 mm |
-| T₀ | Initial droplet temperature | 300 K |
-| p∞ | Ambient pressure | 1000 Pa |
-| α | Evaporation coefficient | 0.1 |
+| Parameter | Description | Default | Range |
+|-----------|-------------|---------|-------|
+| R₀ | Initial droplet radius | 1 mm | 0.1-10 mm |
+| T₀ | Initial droplet temperature | 373 K | 300-450 K |
+| p∞ | Ambient pressure | 1000 Pa | 100-101325 Pa |
+| α | Evaporation coefficient | 0.5 | 0.01-1.0 |
+| Nucleation Factor | Internal boiling intensity | 10 | 1-100 |
+| Fragmentation ΔT | Superheat for explosion | 30 K | 10-100 K |
+
+## Example Scenarios
+
+### Mild Flash Evaporation
+- T₀ = 350 K, p∞ = 10000 Pa → Low superheat, slow evaporation
+
+### Violent Flash Boiling
+- T₀ = 373 K, p∞ = 1000 Pa → High superheat (~66 K), rapid boiling
+
+### Explosive Fragmentation
+- T₀ = 400 K, p∞ = 500 Pa → Very high superheat, droplet shatters

@@ -1,7 +1,7 @@
 """Animated droplet visualization widget."""
 
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSlider, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSlider, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QBrush, QPen, QFont
 
@@ -112,37 +112,66 @@ class DropletVisualization(QWidget):
     """Widget for animated droplet visualization with time control."""
     
     timeChanged = pyqtSignal(float)
+    helpRequested = pyqtSignal()  # Signal to show help dialog
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self._result = None
         self._current_index = 0
         self._playing = False
+        self._timer_active = False
         
         self._setup_ui()
         
-        # Animation timer
+        # Animation timer - use singleShot for safer operation
         self._timer = QTimer(self)
+        self._timer.setSingleShot(False)
         self._timer.timeout.connect(self._advance_frame)
     
     def _setup_ui(self):
         """Set up the visualization UI."""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(3)
         
-        # Title
+        # Title row with help button
+        title_layout = QHBoxLayout()
         title = QLabel("Droplet Visualization")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        layout.addWidget(title)
+        title.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        title_layout.addWidget(title)
+        
+        # Help button
+        self.help_button = QPushButton("?")
+        self.help_button.setFixedSize(24, 24)
+        self.help_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                font-weight: bold;
+                border-radius: 12px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        self.help_button.setToolTip("Show governing equations")
+        self.help_button.clicked.connect(self.helpRequested.emit)
+        title_layout.addWidget(self.help_button)
+        layout.addLayout(title_layout)
         
         # Droplet canvas
         self.canvas = DropletCanvas()
+        self.canvas.setMinimumSize(150, 150)
         layout.addWidget(self.canvas, stretch=1)
         
         # Time slider
         slider_layout = QHBoxLayout()
+        slider_layout.setSpacing(5)
         self.time_label = QLabel("t = 0.000 s")
-        self.time_label.setMinimumWidth(100)
+        self.time_label.setStyleSheet("font-size: 10px;")
+        self.time_label.setMinimumWidth(80)
         
         self.time_slider = QSlider(Qt.Orientation.Horizontal)
         self.time_slider.setMinimum(0)
@@ -155,36 +184,49 @@ class DropletVisualization(QWidget):
         
         # Playback controls
         controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(3)
         
-        from PyQt6.QtWidgets import QPushButton
-        
-        self.play_button = QPushButton("▶ Play")
+        self.play_button = QPushButton("▶")
+        self.play_button.setFixedWidth(40)
+        self.play_button.setToolTip("Play/Pause")
         self.play_button.clicked.connect(self._toggle_play)
         controls_layout.addWidget(self.play_button)
         
-        self.reset_button = QPushButton("⟲ Reset")
+        self.reset_button = QPushButton("⟲")
+        self.reset_button.setFixedWidth(40)
+        self.reset_button.setToolTip("Reset to start")
         self.reset_button.clicked.connect(self._reset)
         controls_layout.addWidget(self.reset_button)
         
         # Speed control
-        controls_layout.addWidget(QLabel("Speed:"))
+        speed_label = QLabel("Speed:")
+        speed_label.setStyleSheet("font-size: 9px;")
+        controls_layout.addWidget(speed_label)
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setMinimum(1)
         self.speed_slider.setMaximum(10)
         self.speed_slider.setValue(5)
-        self.speed_slider.setMaximumWidth(100)
+        self.speed_slider.setMaximumWidth(60)
+        self.speed_slider.valueChanged.connect(self._on_speed_changed)
         controls_layout.addWidget(self.speed_slider)
         
         layout.addLayout(controls_layout)
     
     def set_result(self, result: SimulationResult):
         """Set simulation result for visualization."""
+        # Stop any running animation first
+        was_playing = self._playing
+        if self._playing:
+            self._stop_playback()
+        
         self._result = result
         self._current_index = 0
         
         if result is not None and len(result.t) > 0:
+            self.time_slider.blockSignals(True)
             self.time_slider.setMaximum(len(result.t) - 1)
             self.time_slider.setValue(0)
+            self.time_slider.blockSignals(False)
             self._update_display()
     
     def _on_slider_changed(self, value: int):
@@ -206,23 +248,44 @@ class DropletVisualization(QWidget):
         self.time_label.setText(f"t = {t:.3f} s")
         self.timeChanged.emit(t)
     
+    def _stop_playback(self):
+        """Stop the animation playback."""
+        if self._timer.isActive():
+            self._timer.stop()
+        self._playing = False
+        self._timer_active = False
+        self.play_button.setText("▶")
+    
+    def _on_speed_changed(self, value: int):
+        """Handle speed slider change - update timer interval if playing."""
+        if self._playing and self._timer.isActive():
+            interval = max(16, 150 // value)  # 16ms minimum (~60fps max)
+            self._timer.setInterval(interval)
+    
     def _toggle_play(self):
         """Toggle animation playback."""
+        if self._result is None or len(self._result.t) == 0:
+            return
+            
         if self._playing:
-            self._timer.stop()
-            self._playing = False
-            self.play_button.setText("▶ Play")
+            self._stop_playback()
         else:
             # Calculate interval based on speed
             speed = self.speed_slider.value()
-            interval = max(10, 100 // speed)
+            interval = max(16, 150 // speed)  # 16ms minimum (~60fps max)
             self._timer.start(interval)
             self._playing = True
-            self.play_button.setText("⏸ Pause")
+            self._timer_active = True
+            self.play_button.setText("⏸")
     
     def _advance_frame(self):
         """Advance to next frame in animation."""
-        if self._result is None:
+        if self._result is None or not self._playing:
+            self._stop_playback()
+            return
+        
+        if len(self._result.t) == 0:
+            self._stop_playback()
             return
         
         self._current_index += 1
@@ -236,9 +299,9 @@ class DropletVisualization(QWidget):
     
     def _reset(self):
         """Reset animation to start."""
+        self._stop_playback()
         self._current_index = 0
+        self.time_slider.blockSignals(True)
         self.time_slider.setValue(0)
+        self.time_slider.blockSignals(False)
         self._update_display()
-        
-        if self._playing:
-            self._toggle_play()

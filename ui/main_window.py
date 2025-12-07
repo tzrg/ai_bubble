@@ -11,6 +11,7 @@ from physics.model import FlashEvaporationModel, SimulationParameters, Simulatio
 from .controls import ParameterControlPanel
 from .plots import SimulationPlots
 from .droplet_view import DropletVisualization
+from .equations_dialog import EquationsDialog
 
 
 class MainWindow(QMainWindow):
@@ -63,6 +64,9 @@ class MainWindow(QMainWindow):
         
         # Connect droplet time changes to plot time markers
         self.droplet_view.timeChanged.connect(self.plots.set_time_marker)
+        
+        # Connect help button to equations dialog
+        self.droplet_view.helpRequested.connect(self._show_equations)
         
         # Set splitter sizes
         splitter.setSizes([320, 880])
@@ -155,27 +159,11 @@ class MainWindow(QMainWindow):
             "<p>© 2024</p>"
         )
     
+    def _show_equations(self):
+        """Show the equations dialog."""
+        dialog = EquationsDialog(self)
+        dialog.exec()
+    
     def _show_physics_info(self):
-        """Show physics model information."""
-        QMessageBox.information(
-            self,
-            "Physics Model",
-            "<h3>Flash Boiling Physics</h3>"
-            "<p><b>Superheat:</b> ΔT = T_droplet - T_sat(p_ambient)</p>"
-            "<p>When ΔT > threshold, nucleate boiling occurs inside the droplet, "
-            "causing rapid volumetric evaporation.</p>"
-            "<p>At very high superheat (ΔT > fragmentation threshold), the droplet "
-            "explosively fragments into smaller droplets.</p>"
-            "<h3>Governing Equations</h3>"
-            "<p><b>Surface Evaporation (Hertz-Knudsen):</b><br>"
-            "ṁ_surface = 4πR²·α·(psat - p∞) / √(2π·Rs·T)</p>"
-            "<p><b>Nucleate Boiling:</b><br>"
-            "ṁ_nucleate ∝ mass · (ΔT - ΔT_threshold)²</p>"
-            "<p><b>Energy Balance:</b><br>"
-            "m·cₚ·dT/dt = -ṁ·hfg</p>"
-            "<h3>Key Parameters</h3>"
-            "<ul>"
-            "<li><b>Nucleation Factor</b>: Multiplier for internal boiling rate</li>"
-            "<li><b>Fragmentation ΔT</b>: Superheat threshold for explosive breakup</li>"
-            "</ul>"
-        )
+        """Show physics model information (redirects to equations dialog)."""
+        self._show_equations()
